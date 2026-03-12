@@ -1,7 +1,8 @@
-const express = require("express");
+﻿const express = require("express");
 const router = express.Router();
 const Entity = require("../models/Entity");
 const { requireAdmin } = require("../middlewares/requireAdmin");
+const { parseCsvObjects, normalizeStatus, toNumber, parseTags } = require("../lib/csv");
 
 router.use(requireAdmin);
 
@@ -10,14 +11,12 @@ function escapeRegExp(str) {
 }
 
 async function resolveCollection({ collectionId, collectionName }) {
-  // Existing selection
   if (collectionId) {
     const col = await Entity.findOne({ _id: collectionId, type: "collection" }).lean();
     if (!col) throw new Error("Invalid collection selected");
     return { collectionId: col._id, collectionName: col.name };
   }
 
-  // Typed collection name
   const name = (collectionName || "").trim();
   if (!name) return { collectionId: null, collectionName: "" };
 
@@ -43,7 +42,6 @@ router.get("/", async (req, res) => {
       filter.status = status;
     }
 
-    // Collection filter only for items
     if (type === "item" && collectionId) {
       if (collectionId === "__none__") {
         andConditions.push({ $or: [{ collectionId: null }, { collectionName: "" }] });
@@ -116,7 +114,6 @@ router.post("/", async (req, res) => {
     } else {
       payload.collectionId = null;
       payload.collectionName = "";
-      // optional: prevent duplicate collection name
       const exists = await Entity.findOne({ type: "collection", name: payload.name }).lean();
       if (exists) return res.status(400).json({ message: "Collection with same name already exists" });
     }
@@ -141,8 +138,9 @@ router.put("/:id", async (req, res) => {
 
     if (payload.name !== undefined) update.name = String(payload.name).trim();
     if (payload.description !== undefined) update.description = String(payload.description || "");
-    if (payload.status !== undefined)
+    if (payload.status !== undefined) {
       update.status = ["active", "inactive"].includes(payload.status) ? payload.status : existing.status;
+    }
     if (payload.sortOrder !== undefined) update.sortOrder = Number(payload.sortOrder || 0);
     if (payload.tags !== undefined) update.tags = Array.isArray(payload.tags) ? payload.tags : [];
 
@@ -152,7 +150,6 @@ router.put("/:id", async (req, res) => {
       update.collectionName = link.collectionName;
     }
 
-    // If updating a collection name, also update denormalized names in items
     if (existing.type === "collection" && update.name && update.name !== existing.name) {
       const dup = await Entity.findOne({ type: "collection", name: update.name, _id: { $ne: id } }).lean();
       if (dup) return res.status(400).json({ message: "Collection with same name already exists" });
@@ -178,7 +175,6 @@ router.delete("/:id", async (req, res) => {
     const existing = await Entity.findById(id).lean();
     if (!existing) return res.status(404).json({ message: "Not found" });
 
-    // Professional behavior: do not delete collection if it has items
     if (existing.type === "collection") {
       const count = await Entity.countDocuments({ type: "item", collectionId: existing._id });
       if (count > 0) {
@@ -195,7 +191,7 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// POST /api/entities/bulk/status - bulk update status
+// POST /api/entities/bulk/status
 router.post("/bulk/status", async (req, res) => {
   try {
     const { ids, status } = req.body;
@@ -217,7 +213,7 @@ router.post("/bulk/status", async (req, res) => {
   }
 });
 
-// POST /api/entities/bulk/delete - bulk delete
+// POST /api/entities/bulk/delete
 router.post("/bulk/delete", async (req, res) => {
   try {
     const { ids } = req.body;
@@ -225,7 +221,6 @@ router.post("/bulk/delete", async (req, res) => {
       return res.status(400).json({ message: "ids array is required" });
     }
 
-    // Check for collections with linked items
     const collections = await Entity.find({
       _id: { $in: ids },
       type: "collection"
@@ -244,6 +239,107 @@ router.post("/bulk/delete", async (req, res) => {
     res.json({ ok: true, deletedCount: result.deletedCount });
   } catch (e) {
     res.status(500).json({ message: e.message || "Bulk delete failed" });
+  }
+});
+
+// POST /api/entities/bulk/import
+router.post("/bulk/import", async (req, res) => {
+  try {
+    const { type, csv } = req.body || {};
+    if (!type || !["item", "collection"].includes(type)) {
+      return res.status(400).json({ message: "type must be item or collection" });
+    }
+    if (typeof csv !== "string" || !csv.trim()) {
+      return res.status(400).json({ message: "CSV content is required" });
+    }
+
+    const { records } = parseCsvObjects(csv);
+    if (!records.length) {
+      return res.status(400).json({ message: "CSV has no data rows" });
+    }
+
+    let created = 0;
+    let updated = 0;
+    const skipped = [];
+
+    for (const record of records) {
+      const row = record.data;
+      const name = String(row.name || "").trim();
+      if (!name) {
+        skipped.push({ row: record.rowNumber, reason: "name is required" });
+        continue;
+      }
+
+      const basePayload = {
+        type,
+        name,
+        description: String(row.description || "").trim(),
+        status: normalizeStatus(row.status),
+        sortOrder: toNumber(row.sortOrder, 0),
+        tags: parseTags(row.tags)
+      };
+
+      if (type === "collection") {
+        basePayload.collectionId = null;
+        basePayload.collectionName = "";
+
+        const existing = await Entity.findOne({ type: "collection", name }).select("_id").lean();
+        if (existing) {
+          await Entity.updateOne({ _id: existing._id }, { $set: basePayload });
+          updated += 1;
+        } else {
+          await Entity.create(basePayload);
+          created += 1;
+        }
+        continue;
+      }
+
+      const collectionName = String(row.collectionName || "").trim();
+      if (collectionName) {
+        let collection = await Entity.findOne({ type: "collection", name: collectionName }).lean();
+        if (!collection) {
+          collection = await Entity.create({
+            type: "collection",
+            name: collectionName,
+            description: "",
+            status: "active",
+            sortOrder: 0,
+            tags: [],
+            collectionId: null,
+            collectionName: ""
+          });
+        }
+        basePayload.collectionId = collection._id;
+        basePayload.collectionName = collection.name;
+      } else {
+        basePayload.collectionId = null;
+        basePayload.collectionName = "";
+      }
+
+      const existingItem = await Entity.findOne({ type: "item", name }).select("_id").lean();
+      if (existingItem) {
+        await Entity.updateOne({ _id: existingItem._id }, { $set: basePayload });
+        updated += 1;
+      } else {
+        await Entity.create(basePayload);
+        created += 1;
+      }
+    }
+
+    if (!created && !updated) {
+      return res.status(400).json({ message: "No valid rows found for import", skipped });
+    }
+
+    return res.json({
+      ok: true,
+      imported: created + updated,
+      created,
+      updated,
+      skipped: skipped.length,
+      errors: skipped.slice(0, 25)
+    });
+  } catch (e) {
+    return res.status(500).json({ message: e.message || "Bulk import failed" });
   }
 });
 

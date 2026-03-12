@@ -1,15 +1,30 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../lib/api";
 import {
-    Plus, Search, ChevronUp, ChevronDown, Trash2, Edit3, X, Check,
+    Plus, Search, ChevronUp, ChevronDown, Trash2, Edit3, X,
     ChevronLeft, ChevronRight, ToggleLeft, ToggleRight,
-    AlertCircle, CheckCircle, PackageOpen
+    AlertCircle, CheckCircle, PackageOpen, Upload, Download, FileSpreadsheet
 } from "lucide-react";
 
 function SortIcon({ activeSort, order, col }) {
     if (activeSort !== col) return <ChevronUp size={14} className="opacity-20" />;
     return order === "asc" ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
+}
+
+function escapeCsvCell(value) {
+    const text = String(value ?? "");
+    if (!/[",\n]/.test(text)) return text;
+    return `"${text.replace(/"/g, "\"\"")}"`;
+}
+
+function buildTemplateCsv(csvTemplate) {
+    const headers = csvTemplate?.headers || [];
+    const sampleRows = csvTemplate?.sampleRows || [];
+    if (!headers.length) return "";
+    return [headers, ...sampleRows]
+        .map((row) => row.map(escapeCsvCell).join(","))
+        .join("\n");
 }
 
 /**
@@ -32,7 +47,7 @@ function SortIcon({ activeSort, order, col }) {
 export default function DataManagementPanel({
     title, subtitle, apiBase, queryKey, columns, defaultNewItem = {},
     icon, identifierField = "name", modalFields, useEntityApi = false,
-    entityType, renderExtraModal, showCollectionColumn = false
+    entityType, renderExtraModal, showCollectionColumn = false, csvTemplate = null
 }) {
     const qc = useQueryClient();
     const [search, setSearch] = useState("");
@@ -52,6 +67,8 @@ export default function DataManagementPanel({
 
     // Toast
     const [toasts, setToasts] = useState([]);
+    const [isImportingCsv, setIsImportingCsv] = useState(false);
+    const importFileRef = useRef(null);
 
     const addToast = useCallback((message, type = "success") => {
         const id = Date.now();
@@ -302,6 +319,68 @@ export default function DataManagementPanel({
         bulkDeleteMut.mutate([...selected]);
     };
 
+    const downloadExampleCsv = () => {
+        const csvContent = buildTemplateCsv(csvTemplate);
+        if (!csvContent) {
+            addToast("Example CSV template is not available for this module.", "error");
+            return;
+        }
+
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = csvTemplate?.filename || `${title.toLowerCase().replace(/\s+/g, "_")}_template.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const openImportDialog = () => {
+        importFileRef.current?.click();
+    };
+
+    const handleCsvImport = async (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        if (!file) return;
+
+        const isCsv = file.name.toLowerCase().endsWith(".csv") || file.type.includes("csv");
+        if (!isCsv) {
+            addToast("Please select a valid CSV file.", "error");
+            return;
+        }
+
+        setIsImportingCsv(true);
+        try {
+            const csv = await file.text();
+            if (!csv.trim()) {
+                addToast("The selected CSV file is empty.", "error");
+                return;
+            }
+
+            const payload = useEntityApi ? { type: entityType, csv } : { csv };
+            const { data: result } = await api.post(`${apiBase}/bulk/import`, payload);
+
+            qc.invalidateQueries({ queryKey: [queryKey] });
+            if (useEntityApi) {
+                qc.invalidateQueries({ queryKey: ["entities"] });
+                qc.invalidateQueries({ queryKey: ["collections"] });
+            }
+
+            const imported = result?.imported ?? 0;
+            const created = result?.created ?? 0;
+            const updated = result?.updated ?? 0;
+            const skipped = result?.skipped ?? 0;
+            const message = `Imported ${imported} row(s): ${created} created, ${updated} updated${skipped ? `, ${skipped} skipped` : ""}.`;
+            addToast(message, skipped ? "info" : "success");
+        } catch (e) {
+            const msg = e?.response?.data?.message || "CSV import failed";
+            addToast(msg, "error");
+        } finally {
+            setIsImportingCsv(false);
+        }
+    };
+
     const updateModalField = (key, value) => {
         setModalData(prev => ({ ...prev, [key]: value }));
         // Clear field error on change
@@ -335,9 +414,29 @@ export default function DataManagementPanel({
                     <h1 className="page-title flex items-center gap-2">{icon} {title}</h1>
                     <p className="page-subtitle">{subtitle}</p>
                 </div>
-                <button onClick={openCreate} className="btn btn-primary">
-                    <Plus size={16} /> Add {title.replace(/s$/, "")}
-                </button>
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                    {csvTemplate?.headers?.length > 0 && (
+                        <>
+                            <input
+                                ref={importFileRef}
+                                type="file"
+                                accept=".csv,text/csv"
+                                className="hidden"
+                                onChange={handleCsvImport}
+                            />
+                            <button onClick={downloadExampleCsv} className="btn btn-ghost">
+                                <Download size={16} /> Example CSV
+                            </button>
+                            <button onClick={openImportDialog} className="btn btn-ghost" disabled={isImportingCsv}>
+                                {isImportingCsv ? <FileSpreadsheet size={16} /> : <Upload size={16} />}
+                                {isImportingCsv ? "Importing..." : "Import CSV"}
+                            </button>
+                        </>
+                    )}
+                    <button onClick={openCreate} className="btn btn-primary">
+                        <Plus size={16} /> Add {title.replace(/s$/, "")}
+                    </button>
+                </div>
             </div>
 
             {/* Search + Filters */}
@@ -442,7 +541,7 @@ export default function DataManagementPanel({
                                 {columns.map(col => (
                                     <td key={col.key}>
                                         <span className={`table-cell-text ${col.key === identifierField ? "font-medium text-slate-900" : ""}`}>
-                                            {col.type === "number" ? Number(item[col.key]).toLocaleString() : (item[col.key] || "—")}
+                                            {col.type === "number" ? Number(item[col.key]).toLocaleString() : (item[col.key] || "-")}
                                         </span>
                                     </td>
                                 ))}

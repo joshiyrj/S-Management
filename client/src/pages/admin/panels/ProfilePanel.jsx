@@ -121,9 +121,6 @@ export default function ProfilePanel() {
           {pwMsg && <span className="inline-danger text-sm">{pwMsg}</span>}
         </div>
 
-        <div className="mt-2 text-xs text-slate-500">
-          Tip: set admin credentials via server environment variables.
-        </div>
       </section>
     </div>
   );

@@ -1,6 +1,7 @@
-const router = require("express").Router();
+﻿const router = require("express").Router();
 const { requireAdmin } = require("../middlewares/requireAdmin");
 const Quantity = require("../models/Quantity");
+const { parseCsvObjects, normalizeStatus } = require("../lib/csv");
 
 router.use(requireAdmin);
 
@@ -124,6 +125,70 @@ router.post("/bulk/status", async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
+// POST /api/quantities/bulk/import
+router.post("/bulk/import", async (req, res, next) => {
+    try {
+        const csv = req.body?.csv;
+        if (typeof csv !== "string" || !csv.trim()) {
+            return res.status(400).json({ message: "CSV content is required" });
+        }
+
+        const { records } = parseCsvObjects(csv);
+        if (!records.length) {
+            return res.status(400).json({ message: "CSV has no data rows" });
+        }
+
+        const operations = [];
+        const skipped = [];
+
+        for (const record of records) {
+            const row = record.data;
+            const label = String(row.label || "").trim();
+            const value = Number(String(row.value || "").trim());
+
+            if (!label) {
+                skipped.push({ row: record.rowNumber, reason: "label is required" });
+                continue;
+            }
+            if (!Number.isFinite(value)) {
+                skipped.push({ row: record.rowNumber, reason: "value must be numeric" });
+                continue;
+            }
+
+            operations.push({
+                updateOne: {
+                    filter: { label },
+                    update: {
+                        $set: {
+                            label,
+                            value,
+                            unit: String(row.unit || "pcs").trim() || "pcs",
+                            category: String(row.category || "").trim(),
+                            status: normalizeStatus(row.status),
+                            notes: String(row.notes || "").trim()
+                        }
+                    },
+                    upsert: true
+                }
+            });
+        }
+
+        if (!operations.length) {
+            return res.status(400).json({ message: "No valid rows found for import", skipped });
+        }
+
+        const result = await Quantity.bulkWrite(operations, { ordered: false });
+        res.json({
+            ok: true,
+            imported: operations.length,
+            created: result.upsertedCount || 0,
+            updated: result.modifiedCount || 0,
+            skipped: skipped.length,
+            errors: skipped.slice(0, 25)
+        });
+    } catch (e) { next(e); }
+});
+
 // POST /api/quantities/merge
 router.post("/merge", async (req, res, next) => {
     try {
@@ -131,7 +196,6 @@ router.post("/merge", async (req, res, next) => {
         if (!Array.isArray(sourceIds) || !sourceIds.length || !targetId) {
             return res.status(400).json({ message: "sourceIds and targetId required" });
         }
-        // Sum values from sources into target
         const sources = await Quantity.find({ _id: { $in: sourceIds.filter(id => id !== targetId) } }).lean();
         const totalValue = sources.reduce((sum, s) => sum + s.value, 0);
         await Quantity.findByIdAndUpdate(targetId, { $inc: { value: totalValue } });

@@ -56,6 +56,10 @@ export default function UserLogin() {
                         <button disabled={loading} className="btn btn-primary w-full py-2.5">
                             {loading ? "Signing in..." : "Sign In"} <ArrowRight size={16} />
                         </button>
+
+                        <Link to="/admin/login" className="btn btn-ghost w-full py-2.5">
+                            Switch to Admin Login
+                        </Link>
                     </form>
 
                     <div className="mt-6 text-center text-sm text-slate-600">

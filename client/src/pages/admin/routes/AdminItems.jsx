@@ -5,13 +5,24 @@ import DataManagementPanel from "../components/DataManagementPanel";
 
 const columns = [
   { key: "name", label: "Name", required: true, placeholder: "e.g. Premium Item" },
+  { key: "sortOrder", label: "Sort", type: "number", placeholder: "e.g. 1" }
 ];
 
 const modalFields = [
   { key: "name", label: "Name", required: true, placeholder: "e.g. Premium Item" },
+  { key: "sortOrder", label: "Sort Order", type: "number", placeholder: "e.g. 1" },
   { key: "tags", label: "Tags (comma separated)", placeholder: "e.g. featured, new, sale" },
-  { key: "description", label: "Description", type: "textarea", placeholder: "Optional description...", fullWidth: true },
+  { key: "description", label: "Description", type: "textarea", placeholder: "Optional description...", fullWidth: true }
 ];
+
+const csvTemplate = {
+  filename: "items_import_template.csv",
+  headers: ["name", "description", "tags", "collectionName", "status", "sortOrder"],
+  sampleRows: [
+    ["Premium Satin", "Silky premium satin fabric", "satin|premium", "Wedding Premium", "active", "1"],
+    ["Cotton Basic", "Daily use cotton fabric", "cotton|basic", "Summer Collection", "active", "2"]
+  ]
+};
 
 function CollectionLinkSection({ modalData, updateModalField }) {
   const collectionsQuery = useQuery({
@@ -74,7 +85,8 @@ export default function AdminItems() {
       queryKey="items-panel"
       columns={columns}
       modalFields={modalFields}
-      defaultNewItem={{ name: "", tags: "", description: "", status: "active", collectionId: "", collectionName: "" }}
+      csvTemplate={csvTemplate}
+      defaultNewItem={{ name: "", sortOrder: 0, tags: "", description: "", status: "active", collectionId: "", collectionName: "" }}
       icon={<Boxes size={22} />}
       identifierField="name"
       useEntityApi={true}

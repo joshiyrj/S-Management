@@ -1,6 +1,7 @@
-const router = require("express").Router();
+﻿const router = require("express").Router();
 const { requireAdmin } = require("../middlewares/requireAdmin");
 const DesignNo = require("../models/DesignNo");
+const { parseCsvObjects, normalizeStatus } = require("../lib/csv");
 
 router.use(requireAdmin);
 
@@ -117,6 +118,65 @@ router.post("/bulk/status", async (req, res, next) => {
         if (!["active", "inactive"].includes(status)) return res.status(400).json({ message: "Invalid status" });
         await DesignNo.updateMany({ _id: { $in: ids } }, { status });
         res.json({ ok: true });
+    } catch (e) { next(e); }
+});
+
+// POST /api/design-nos/bulk/import
+router.post("/bulk/import", async (req, res, next) => {
+    try {
+        const csv = req.body?.csv;
+        if (typeof csv !== "string" || !csv.trim()) {
+            return res.status(400).json({ message: "CSV content is required" });
+        }
+
+        const { records } = parseCsvObjects(csv);
+        if (!records.length) {
+            return res.status(400).json({ message: "CSV has no data rows" });
+        }
+
+        const operations = [];
+        const skipped = [];
+
+        for (const record of records) {
+            const row = record.data;
+            const designNumber = String(row.designNumber || "").trim();
+            if (!designNumber) {
+                skipped.push({ row: record.rowNumber, reason: "designNumber is required" });
+                continue;
+            }
+
+            operations.push({
+                updateOne: {
+                    filter: { designNumber },
+                    update: {
+                        $set: {
+                            designNumber,
+                            title: String(row.title || "").trim(),
+                            category: String(row.category || "").trim(),
+                            color: String(row.color || "").trim(),
+                            mill: String(row.mill || "").trim(),
+                            status: normalizeStatus(row.status),
+                            notes: String(row.notes || "").trim()
+                        }
+                    },
+                    upsert: true
+                }
+            });
+        }
+
+        if (!operations.length) {
+            return res.status(400).json({ message: "No valid rows found for import", skipped });
+        }
+
+        const result = await DesignNo.bulkWrite(operations, { ordered: false });
+        res.json({
+            ok: true,
+            imported: operations.length,
+            created: result.upsertedCount || 0,
+            updated: result.modifiedCount || 0,
+            skipped: skipped.length,
+            errors: skipped.slice(0, 25)
+        });
     } catch (e) { next(e); }
 });
 

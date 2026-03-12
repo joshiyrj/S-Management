@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api } from "../../lib/api";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Lock, User, ArrowRight, Shield } from "lucide-react";
 
@@ -74,6 +74,10 @@ export default function AdminLogin() {
               {loading ? "Signing in..." : "Sign In"}
               <ArrowRight size={16} />
             </button>
+
+            <Link to="/user/login" className="btn btn-ghost w-full py-2.5">
+              Switch to User Login
+            </Link>
           </form>
 
           <div className="mt-5 text-xs text-slate-500 text-center">Use your configured admin credentials</div>

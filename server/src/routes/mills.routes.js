@@ -1,6 +1,7 @@
-const router = require("express").Router();
+﻿const router = require("express").Router();
 const { requireAdmin } = require("../middlewares/requireAdmin");
 const Mill = require("../models/Mill");
+const { parseCsvObjects, normalizeStatus } = require("../lib/csv");
 
 router.use(requireAdmin);
 
@@ -12,7 +13,7 @@ function resolveSort(sort, order) {
     return { [field]: direction };
 }
 
-// GET /api/mills — list with search, sort, pagination
+// GET /api/mills - list with search, sort, pagination
 router.get("/", async (req, res, next) => {
     try {
         const { search, sort = "createdAt", order = "desc", page = 1, limit = 10, status } = req.query;
@@ -46,7 +47,7 @@ router.get("/", async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-// POST /api/mills — create
+// POST /api/mills - create
 router.post("/", async (req, res, next) => {
     try {
         const { name, location, contactPerson, phone, status, notes } = req.body;
@@ -67,7 +68,7 @@ router.post("/", async (req, res, next) => {
     }
 });
 
-// PUT /api/mills/:id — update
+// PUT /api/mills/:id - update
 router.put("/:id", async (req, res, next) => {
     try {
         const update = {};
@@ -115,14 +116,71 @@ router.post("/bulk/status", async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-// POST /api/mills/merge — merge multiple mills into one
+// POST /api/mills/bulk/import
+router.post("/bulk/import", async (req, res, next) => {
+    try {
+        const csv = req.body?.csv;
+        if (typeof csv !== "string" || !csv.trim()) {
+            return res.status(400).json({ message: "CSV content is required" });
+        }
+
+        const { records } = parseCsvObjects(csv);
+        if (!records.length) {
+            return res.status(400).json({ message: "CSV has no data rows" });
+        }
+
+        const operations = [];
+        const skipped = [];
+
+        for (const record of records) {
+            const row = record.data;
+            const name = String(row.name || "").trim();
+            if (!name) {
+                skipped.push({ row: record.rowNumber, reason: "name is required" });
+                continue;
+            }
+
+            operations.push({
+                updateOne: {
+                    filter: { name },
+                    update: {
+                        $set: {
+                            name,
+                            location: String(row.location || "").trim(),
+                            contactPerson: String(row.contactPerson || "").trim(),
+                            phone: String(row.phone || "").trim(),
+                            status: normalizeStatus(row.status),
+                            notes: String(row.notes || "").trim()
+                        }
+                    },
+                    upsert: true
+                }
+            });
+        }
+
+        if (!operations.length) {
+            return res.status(400).json({ message: "No valid rows found for import", skipped });
+        }
+
+        const result = await Mill.bulkWrite(operations, { ordered: false });
+        res.json({
+            ok: true,
+            imported: operations.length,
+            created: result.upsertedCount || 0,
+            updated: result.modifiedCount || 0,
+            skipped: skipped.length,
+            errors: skipped.slice(0, 25)
+        });
+    } catch (e) { next(e); }
+});
+
+// POST /api/mills/merge - merge multiple mills into one
 router.post("/merge", async (req, res, next) => {
     try {
         const { sourceIds, targetId } = req.body;
         if (!Array.isArray(sourceIds) || !sourceIds.length || !targetId) {
             return res.status(400).json({ message: "sourceIds and targetId required" });
         }
-        // Delete the source mills (target survives)
         await Mill.deleteMany({ _id: { $in: sourceIds.filter(id => id !== targetId) } });
         const target = await Mill.findById(targetId).lean();
         if (!target) return res.status(404).json({ message: "Target mill not found" });
