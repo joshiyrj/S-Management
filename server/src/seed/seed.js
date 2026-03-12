@@ -3,9 +3,14 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const Entity = require("../models/Entity");
 const Admin = require("../models/AdminUser");
+const User = require("../models/User");
 
-const DEFAULT_ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
-const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "1234";
+const DEFAULT_ADMIN_USERNAME = process.env.ADMIN_USERNAME || "SuperAdmin";
+const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Admin@1234";
+const DEFAULT_USER_EMAIL = String(process.env.DEFAULT_USER_EMAIL || "joshiyrj@gmail.com").toLowerCase().trim();
+const DEFAULT_USER_PASSWORD = process.env.DEFAULT_USER_PASSWORD || "Admin@1234";
+const DEFAULT_USER_NAME = process.env.DEFAULT_USER_NAME || "Joshiyrj";
+const DEFAULT_USER_MOBILE = process.env.DEFAULT_USER_MOBILE || "9999999999";
 
 async function run() {
   await mongoose.connect(process.env.MONGO_URI);
@@ -67,6 +72,23 @@ async function run() {
     }
   } catch {
     // Ignore admin seeding when admin model is unavailable.
+  }
+
+  try {
+    const existingUser = await User.findOne({ email: DEFAULT_USER_EMAIL }).lean();
+    if (!existingUser) {
+      const userHash = await bcrypt.hash(DEFAULT_USER_PASSWORD, 10);
+      await User.create({
+        name: DEFAULT_USER_NAME,
+        email: DEFAULT_USER_EMAIL,
+        mobile: DEFAULT_USER_MOBILE,
+        passwordHash: userHash,
+        status: "active"
+      });
+      console.log(`Default user seeded: ${DEFAULT_USER_EMAIL} / <configured password>`);
+    }
+  } catch {
+    // Ignore user seeding when user model is unavailable.
   }
 
   await mongoose.disconnect();

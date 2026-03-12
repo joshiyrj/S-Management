@@ -9,8 +9,8 @@ const LoginSchema = z.object({
   password: z.string().min(1)
 });
 const ADMIN_COOKIE = process.env.COOKIE_NAME || "s_management_token";
-const DEFAULT_ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
-const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "1234";
+const DEFAULT_ADMIN_USERNAME = process.env.ADMIN_USERNAME || "SuperAdmin";
+const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Admin@1234";
 
 router.post("/login", async (req, res, next) => {
   try {
@@ -27,8 +27,8 @@ router.post("/login", async (req, res, next) => {
       const passwordHash = await bcrypt.hash(DEFAULT_ADMIN_PASSWORD, 10);
       admin = await AdminUser.create({
         username: DEFAULT_ADMIN_USERNAME,
-        name: "Admin",
-        email: "admin@smanagement.com",
+        name: "Super Admin",
+        email: "superadmin@smanagement.com",
         mobile: "9999999999",
         passwordHash
       });

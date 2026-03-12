@@ -62,7 +62,12 @@ Important:
 - `COOKIE_NAME` (default: `s_management_token`)
 - `CLIENT_ORIGIN` (comma-separated allowed origins)
 - `ADMIN_USERNAME`, `ADMIN_PASSWORD` (bootstrap admin credentials)
+- `DEFAULT_USER_EMAIL`, `DEFAULT_USER_PASSWORD` (bootstrap user credentials)
 - `GEMINI_API_KEY` (required for assistant AI features)
+
+Default credential fallbacks (if env vars are not set):
+- Admin: `SuperAdmin` / `Admin@1234`
+- User: `joshiyrj@gmail.com` / `Admin@1234`
 
 ### Client (`client/.env`)
 
