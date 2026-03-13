@@ -14,6 +14,49 @@ const hasMoreThanTwoDecimals = (value) => {
   return text.split('.')[1].length > 2;
 };
 
+const calculateRegularMetrics = (baleDetails = []) => {
+  let meterSold = 0;
+  let stockRemaining = 0;
+
+  baleDetails.forEach((bale) => {
+    const meter = toNum(bale?.meter);
+    if (bale?.billNo && String(bale.billNo).trim() !== '') {
+      meterSold += meter;
+    } else {
+      stockRemaining += meter;
+    }
+  });
+
+  return {
+    meterSold: Number(meterSold.toFixed(2)),
+    stockRemaining: Number(stockRemaining.toFixed(2)),
+  };
+};
+
+const calculateMixMetrics = (thanDetails = []) => {
+  let meterSold = 0;
+  let stockRemaining = 0;
+
+  thanDetails.forEach((than) => {
+    const meter = toNum(than?.thanMeter);
+    if (than?.checked) {
+      meterSold += meter;
+    } else {
+      stockRemaining += meter;
+    }
+  });
+
+  return {
+    meterSold: Number(meterSold.toFixed(2)),
+    stockRemaining: Number(stockRemaining.toFixed(2)),
+  };
+};
+
+const calculateStockMetrics = (stock = {}) =>
+  stock.type === 'regular'
+    ? calculateRegularMetrics(stock.baleDetails || [])
+    : calculateMixMetrics(stock.thanDetails || []);
+
 const validateStockPayload = ({ type, lotNo, totalMeterReceived, second, unchecked, baleDetails, thanDetails }) => {
   if (!Number.isInteger(Number(lotNo)) || Number(lotNo) < 1) {
     return 'Lot number must be a positive whole number';
@@ -135,13 +178,34 @@ exports.getAll = async (req, res, next) => {
 
     const total = await Stock.countDocuments(filter);
     const stocks = await Stock.find(filter)
+      .select(
+        '_id date millName qualityName designName lotNo type totalMeterReceived baleDetails.billNo baleDetails.meter thanDetails.checked thanDetails.thanMeter createdAt'
+      )
       .sort({ date: -1, createdAt: -1 })
       .skip((page - 1) * limit)
-      .limit(Number(limit));
+      .limit(Number(limit))
+      .lean();
+
+    const listItems = stocks.map((stock) => {
+      const metrics = calculateStockMetrics(stock);
+      return {
+        _id: stock._id,
+        date: stock.date,
+        millName: stock.millName,
+        qualityName: stock.qualityName,
+        designName: stock.designName,
+        lotNo: stock.lotNo,
+        type: stock.type,
+        totalMeterReceived: stock.totalMeterReceived,
+        meterSold: metrics.meterSold,
+        stockRemaining: metrics.stockRemaining,
+        createdAt: stock.createdAt,
+      };
+    });
 
     res.json({
       success: true,
-      data: stocks,
+      data: listItems,
       pagination: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / limit) },
     });
   } catch (err) {
@@ -289,17 +353,23 @@ exports.remove = async (req, res, next) => {
 // ─── Dashboard stats ──────────────────────────────────────────────────────────
 exports.getStats = async (req, res, next) => {
   try {
-    const stocks = await Stock.find({ isDeleted: false });
+    const stocks = await Stock.find({ isDeleted: false })
+      .select('type totalMeterReceived baleDetails.billNo baleDetails.meter thanDetails.checked thanDetails.thanMeter')
+      .lean();
 
     let totalReceived = 0, totalSold = 0, totalInStock = 0;
     let regularCount = 0, mixCount = 0;
 
     stocks.forEach((s) => {
       totalReceived += s.totalMeterReceived || 0;
-      totalSold += s.meterSold || 0;
-      totalInStock += s.stockRemaining || 0;
-      if (s.type === 'regular') regularCount++;
-      else mixCount++;
+      const metrics = calculateStockMetrics(s);
+      totalSold += metrics.meterSold;
+      totalInStock += metrics.stockRemaining;
+      if (s.type === 'regular') {
+        regularCount++;
+      } else {
+        mixCount++;
+      }
     });
 
     res.json({

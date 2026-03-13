@@ -43,7 +43,57 @@ const buildReportFilter = (query = {}) => {
   return filter;
 };
 
+const toNum = (value) => {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const calculateRowMetrics = (stock) => {
+  const total = toNum(stock.totalMeterReceived);
+  const second = toNum(stock.second);
+  const unchecked = toNum(stock.unchecked);
+
+  if (stock.type === 'regular') {
+    const meterOfTotalBales = Number((stock.baleDetails || []).reduce((sum, bale) => sum + toNum(bale.meter), 0).toFixed(2));
+    const meterSold = Number(
+      (stock.baleDetails || [])
+        .filter((bale) => bale.billNo && String(bale.billNo).trim() !== '')
+        .reduce((sum, bale) => sum + toNum(bale.meter), 0)
+        .toFixed(2)
+    );
+    const stockRemaining = Number((meterOfTotalBales - meterSold).toFixed(2));
+
+    return {
+      meterOfTotalBales,
+      meterOfTotalThan: 0,
+      meterSold,
+      stockRemaining,
+      remaining: Number((total - meterOfTotalBales).toFixed(2)),
+      finalReport: Number((total - (meterOfTotalBales + second + unchecked)).toFixed(2)),
+    };
+  }
+
+  const meterOfTotalThan = Number((stock.thanDetails || []).reduce((sum, than) => sum + toNum(than.thanMeter), 0).toFixed(2));
+  const meterSold = Number(
+    (stock.thanDetails || [])
+      .filter((than) => than.checked)
+      .reduce((sum, than) => sum + toNum(than.thanMeter), 0)
+      .toFixed(2)
+  );
+  const stockRemaining = Number((meterOfTotalThan - meterSold).toFixed(2));
+
+  return {
+    meterOfTotalBales: 0,
+    meterOfTotalThan,
+    meterSold,
+    stockRemaining,
+    remaining: Number((total - meterOfTotalThan).toFixed(2)),
+    finalReport: Number((total - (meterOfTotalThan + second + unchecked)).toFixed(2)),
+  };
+};
+
 const mapStockToReportRow = (stock, isLotFiltered) => {
+  const metrics = calculateRowMetrics(stock);
   const base = {
     _id: stock._id,
     date: stock.date,
@@ -55,12 +105,12 @@ const mapStockToReportRow = (stock, isLotFiltered) => {
     totalMeterReceived: stock.totalMeterReceived,
     second: stock.second,
     unchecked: stock.unchecked,
-    finalReport: stock.finalReport,
-    meterSold: stock.meterSold,
-    stockRemaining: stock.stockRemaining,
-    meterOfTotalBales: stock.meterOfTotalBales,
-    meterOfTotalThan: stock.meterOfTotalThan,
-    remaining: stock.remaining,
+    finalReport: metrics.finalReport,
+    meterSold: metrics.meterSold,
+    stockRemaining: metrics.stockRemaining,
+    meterOfTotalBales: metrics.meterOfTotalBales,
+    meterOfTotalThan: metrics.meterOfTotalThan,
+    remaining: metrics.remaining,
   };
 
   if (stock.type === 'regular') {
@@ -87,7 +137,9 @@ const mapStockToReportRow = (stock, isLotFiltered) => {
 
 const buildReportPayload = async (query = {}) => {
   const filter = buildReportFilter(query);
-  const stocks = await Stock.find(filter).sort({ date: -1, lotNo: 1, createdAt: -1 });
+  const stocks = await Stock.find(filter)
+    .sort({ date: -1, lotNo: 1, createdAt: -1 })
+    .lean();
   const isLotFiltered = Boolean(query.lotNo);
 
   const rows = stocks.map((stock) => mapStockToReportRow(stock, isLotFiltered));

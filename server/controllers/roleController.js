@@ -106,6 +106,9 @@ const DEFAULT_ROLES = [
   },
 ];
 
+let defaultRolesReady = false;
+let ensureDefaultRolesPromise = null;
+
 const isScopeValid = (scope) => SCOPE_OPTIONS.includes(scope);
 
 const getRoleSnapshot = (role) => ({
@@ -171,7 +174,13 @@ const permissionWithRules = (permission) => {
 };
 
 const ensureDefaultRoles = async () => {
-  await Promise.all(
+  if (defaultRolesReady) return;
+  if (ensureDefaultRolesPromise) {
+    await ensureDefaultRolesPromise;
+    return;
+  }
+
+  ensureDefaultRolesPromise = Promise.all(
     DEFAULT_ROLES.map((role) =>
       Role.findOneAndUpdate(
         { key: role.key },
@@ -184,7 +193,15 @@ const ensureDefaultRoles = async () => {
         { new: true, upsert: true }
       )
     )
-  );
+  )
+    .then(() => {
+      defaultRolesReady = true;
+    })
+    .finally(() => {
+      ensureDefaultRolesPromise = null;
+    });
+
+  await ensureDefaultRolesPromise;
 };
 
 const serializeRole = (role) => ({

@@ -63,8 +63,9 @@ export default function Layout() {
   }, [accountOpen, user?.username]);
 
   useEffect(() => {
+    if (!user?._id) return;
     refreshUser().catch(() => {});
-  }, []);
+  }, [user?._id]);
 
   const validateProfile = () => {
     const nextError = profileName.trim() ? '' : 'Username is required';

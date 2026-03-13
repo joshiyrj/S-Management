@@ -10,6 +10,51 @@ const {
 } = require('../config/permissionCatalog');
 const { ensureDefaultRoles } = require('../controllers/roleController');
 
+const ROLE_CACHE_TTL_MS = 5 * 60 * 1000;
+const roleCache = new Map();
+
+const getCachedRole = (cacheKey) => {
+    const cached = roleCache.get(cacheKey);
+    if (!cached) return null;
+    if (cached.expiresAt < Date.now()) {
+        roleCache.delete(cacheKey);
+        return null;
+    }
+    return cached.role;
+};
+
+const setCachedRole = (role) => {
+    if (!role || !role._id) return;
+    const cacheEntry = {
+        role,
+        expiresAt: Date.now() + ROLE_CACHE_TTL_MS,
+    };
+    roleCache.set(String(role._id), cacheEntry);
+    roleCache.set(`key:${String(role.key || '').toLowerCase()}`, cacheEntry);
+};
+
+const findRoleByIdCached = async (roleId) => {
+    const cacheKey = String(roleId || '');
+    if (!cacheKey) return null;
+    const cached = getCachedRole(cacheKey);
+    if (cached) return cached;
+
+    const role = await Role.findById(roleId).lean();
+    if (role) setCachedRole(role);
+    return role;
+};
+
+const findRoleByKeyCached = async (roleKey) => {
+    const cacheKey = `key:${String(roleKey || '').toLowerCase()}`;
+    if (!roleKey) return null;
+    const cached = getCachedRole(cacheKey);
+    if (cached) return cached;
+
+    const role = await Role.findOne({ key: String(roleKey).toLowerCase() }).lean();
+    if (role) setCachedRole(role);
+    return role;
+};
+
 const fallbackPermissionsForRoleKey = (roleKey) => {
     const elevatedRole = ['superadmin', 'subadmin'].includes(String(roleKey || '').toLowerCase());
     if (!elevatedRole) {
@@ -26,12 +71,12 @@ const fallbackPermissionsForRoleKey = (roleKey) => {
 
 const resolveRoleForUser = async (user) => {
     if (user?.roleId) {
-        const roleById = await Role.findById(user.roleId);
+        const roleById = await findRoleByIdCached(user.roleId);
         if (roleById) return roleById;
     }
 
     if (user?.roleKey) {
-        const roleByKey = await Role.findOne({ key: String(user.roleKey).toLowerCase() });
+        const roleByKey = await findRoleByKeyCached(user.roleKey);
         if (roleByKey) return roleByKey;
     }
 
@@ -78,7 +123,9 @@ const protect = async (req, res, next) => {
             const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
 
             // Get user from the token
-            req.user = await User.findById(decoded.id).select('-password');
+            req.user = await User.findById(decoded.id).select(
+                '_id fullName username email roleId roleKey roleName isActive permissionOverrides createdAt updatedAt'
+            );
 
             if (!req.user || req.user.isActive === false) {
                 return res.status(401).json({ success: false, message: 'User account is inactive' });
