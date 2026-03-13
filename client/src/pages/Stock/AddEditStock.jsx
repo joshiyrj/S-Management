@@ -224,10 +224,10 @@ function CalculationMetric({ eyebrow, label, helper, value, tone = 'muted' }) {
 
 function BreakdownRow({ label, value, tone = 'default' }) {
   const valueClassName = tone === 'result'
-    ? 'text-xl text-blue-700 sm:text-2xl'
+    ? 'text-base text-blue-700 sm:text-lg'
     : tone === 'negative'
-      ? 'text-lg text-red-600 sm:text-xl'
-      : 'text-lg text-slate-800 sm:text-xl';
+      ? 'text-base text-red-600 sm:text-lg'
+      : 'text-base text-slate-800 sm:text-lg';
   const rowClassName = tone === 'result'
     ? 'bg-blue-50'
     : tone === 'negative'
@@ -235,7 +235,7 @@ function BreakdownRow({ label, value, tone = 'default' }) {
       : 'bg-white';
 
   return (
-    <div className={`flex items-center justify-between gap-4 rounded-xl px-4 py-3 ${rowClassName}`}>
+    <div className={`flex items-center justify-between gap-3 rounded-lg px-3 py-2 ${rowClassName}`}>
       <span className={`text-sm ${tone === 'result' ? 'font-semibold text-slate-700' : tone === 'negative' ? 'font-semibold text-red-700' : 'font-medium text-slate-600'}`}>{label}</span>
       <AnimatedMeter value={value} className={valueClassName} />
     </div>

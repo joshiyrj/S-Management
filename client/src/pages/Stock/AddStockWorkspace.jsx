@@ -61,7 +61,7 @@ export default function AddStockWorkspace({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <section className="stock-workspace-card section-reveal">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -78,30 +78,23 @@ export default function AddStockWorkspace({
         </div>
       </section>
 
-      <div className="grid grid-cols-2 gap-3 section-reveal" style={{ animationDelay: '60ms' }}>
+      <div className="grid grid-cols-1 gap-2 section-reveal sm:grid-cols-3" style={{ animationDelay: '60ms' }}>
         <div className="compact-kpi">
           <p className="stock-kicker">Received</p>
-          <AnimatedMeter value={totalMeter} className="mt-2 text-2xl text-slate-900 sm:text-2xl" />
+          <AnimatedMeter value={totalMeter} className="mt-1 text-xl text-slate-900 sm:text-2xl" />
         </div>
         <div className="compact-kpi">
           <p className="stock-kicker">{flowMeterLabel}</p>
-          <AnimatedMeter value={flowMeterValue} className="mt-2 text-2xl text-slate-900 sm:text-2xl" />
-        </div>
-        <div className={`compact-kpi ${finalReport < 0 ? 'border-red-200 bg-red-50' : 'border-blue-200 bg-blue-50'}`}>
-          <p className="stock-kicker">Final Report</p>
-          <AnimatedMeter
-            value={finalReport}
-            className={finalReport < 0 ? 'mt-2 text-2xl text-red-600 sm:text-2xl' : 'mt-2 text-2xl text-blue-700 sm:text-2xl'}
-          />
+          <AnimatedMeter value={flowMeterValue} className="mt-1 text-xl text-slate-900 sm:text-2xl" />
         </div>
         <div className="compact-kpi">
           <p className="stock-kicker">Stock Remaining</p>
-          <AnimatedMeter value={stockRemaining} className="mt-2 text-2xl text-slate-900 sm:text-2xl" />
+          <AnimatedMeter value={stockRemaining} className="mt-1 text-xl text-slate-900 sm:text-2xl" />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1fr)_330px]">
-        <div className="min-w-0 space-y-4">
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="order-2 min-w-0 space-y-3 xl:order-1">
           <section className="stock-workspace-card section-reveal" style={{ animationDelay: '110ms' }}>
             <div className="flex flex-col gap-2 border-b border-slate-100 pb-3 sm:flex-row sm:items-center sm:justify-between">
               <h3 className="text-lg font-semibold text-slate-900">Basic Information</h3>
@@ -468,7 +461,7 @@ export default function AddStockWorkspace({
             )}
           </section>
 
-          <div className="sticky bottom-3 z-20 section-reveal" style={{ animationDelay: '220ms' }}>
+          <div className="sticky bottom-2 z-20 section-reveal" style={{ animationDelay: '220ms' }}>
             <div className="sticky-command-bar">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <p className="stock-action-note">
@@ -489,10 +482,10 @@ export default function AddStockWorkspace({
           </div>
         </div>
 
-        <aside className="space-y-4 2xl:sticky 2xl:top-24 2xl:self-start">
+        <aside className="order-1 space-y-3 xl:order-2 xl:sticky xl:top-24 xl:self-start">
           <div className="stock-workspace-card section-reveal" style={{ animationDelay: '140ms' }}>
             <h3 className="text-base font-semibold text-slate-900">Entry Snapshot</h3>
-            <div className="mt-3 space-y-2 text-sm">
+            <div className="mt-2 space-y-1.5 text-sm">
               <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
                 <span className="text-slate-500">Date</span>
                 <span className="font-semibold text-slate-800">{entryDateLabel}</span>
@@ -510,11 +503,11 @@ export default function AddStockWorkspace({
                 <span className="font-semibold text-slate-800">{selectedDesignName}</span>
               </div>
               <div className="grid grid-cols-2 gap-2 pt-1">
-                <div className="stock-mini-stat p-3">
+                <div className="stock-mini-stat p-2.5">
                   <p className="stock-kicker">Rows</p>
                   <p className="mt-1 text-xl font-bold text-slate-900">{entryRowsCount}</p>
                 </div>
-                <div className="stock-mini-stat p-3">
+                <div className="stock-mini-stat p-2.5">
                   <p className="stock-kicker">Progress</p>
                   <p className="mt-1 text-xl font-bold text-slate-900">{completionRatio.toFixed(0)}%</p>
                   <div className="mt-2 h-1.5 rounded-full bg-slate-200">
@@ -532,15 +525,14 @@ export default function AddStockWorkspace({
             <h3 className="text-base font-semibold text-slate-900">Live Calculations</h3>
             {errors.finalReport && <p className="mt-2 form-error">{errors.finalReport}</p>}
 
-            <div className={`mt-3 rounded-2xl border p-3 ${finalReportToneClass}`}>
-              <p className="stock-kicker">Final Report</p>
-              <AnimatedMeter
-                value={finalReport}
-                className={finalReport < 0 ? 'mt-2 text-3xl text-red-600 sm:text-3xl' : 'mt-2 text-3xl text-blue-700 sm:text-3xl'}
-              />
-            </div>
-
-            <div className="mt-3 space-y-2">
+            <div className="mt-2 space-y-1.5">
+              <div className={`rounded-xl border px-3 py-2 ${finalReportToneClass}`}>
+                <p className={`stock-kicker ${finalReport < 0 ? 'text-red-700' : 'text-blue-700'}`}>Final Report</p>
+                <AnimatedMeter
+                  value={finalReport}
+                  className={finalReport < 0 ? 'mt-1 text-lg text-red-600 sm:text-lg' : 'mt-1 text-lg text-blue-700 sm:text-lg'}
+                />
+              </div>
               <div className={`rounded-xl border px-3 py-2 ${remainingToneClass}`}>
                 <p className="stock-kicker">{flowMeterLabel}</p>
                 <AnimatedMeter value={flowMeterValue} className="mt-1 text-lg text-slate-900 sm:text-lg" />
@@ -566,9 +558,9 @@ export default function AddStockWorkspace({
               </div>
             </div>
 
-            <div className="mt-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50/80 p-3">
+            <div className="mt-2 rounded-2xl border border-dashed border-slate-300 bg-slate-50/80 p-2.5">
               <p className="metric-kicker">Breakdown</p>
-              <div className="mt-2 space-y-2">
+              <div className="mt-2 space-y-1.5">
                 <BreakdownRow label="Total received" value={totalMeter} />
                 <BreakdownRow label={`Less: ${breakdownLabel}`} value={flowMeterValue} />
                 <BreakdownRow label="Less: Second" value={second} />
