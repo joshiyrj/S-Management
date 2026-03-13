@@ -55,7 +55,7 @@ export default function Login() {
             <div className={`mb-4 rounded-xl p-3 ${isDark ? 'bg-blue-600/20' : 'bg-blue-50'}`}>
               <Package className="h-10 w-10 text-blue-500" />
             </div>
-            <h2 className={`text-center text-2xl font-extrabold sm:text-3xl ${isDark ? 'text-white' : 'text-slate-900'}`}>Manihar Enterprise</h2>
+            <h2 className={`text-center text-2xl font-extrabold sm:text-3xl ${isDark ? 'text-white' : 'text-slate-900'}`}>Manihar Enterprises</h2>
             <p className={`mt-2 text-center text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
               Stock Management
             </p>
