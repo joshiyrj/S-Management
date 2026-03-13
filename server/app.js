@@ -1,7 +1,6 @@
 ﻿require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 
 const masterRoutes = require('./routes/masterRoutes');
@@ -53,10 +52,6 @@ app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Dat
 
 app.use((req, res) => res.status(404).json({ success: false, message: 'Route not found' }));
 app.use(errorHandler);
-
-connectDB().catch((error) => {
-  console.error(error.message || 'MongoDB connection failed');
-});
 
 module.exports = app;
 
