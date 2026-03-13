@@ -10,7 +10,8 @@
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "npm run dev --prefix server",
     "client": "npm run dev --prefix client",
-    "build": "npm run build --prefix client"
+    "build": "npm run build --prefix client",
+    "seed:real": "npm run seed:real --prefix server"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

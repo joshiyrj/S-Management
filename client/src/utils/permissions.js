@@ -12,7 +12,7 @@ export const routePermissionMatrix = [
   { path: '/stocks', moduleKey: 'stock_list', action: 'view' },
   { path: '/stocks/add', moduleKey: 'stock_entry', action: 'view' },
   { path: '/reports', moduleKey: 'reports', action: 'view' },
-  { path: '/roles/manage-roles', moduleKey: 'roles_permissions', action: 'view' },
+  // Roles module intentionally hidden from UI fallback navigation
 ];
 
 export const getFirstAllowedPath = (permissions = []) => {

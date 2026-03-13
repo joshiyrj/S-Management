@@ -14,11 +14,6 @@ const pageTitles = {
   '/stocks': 'Stock List',
   '/stocks/add': 'Add New Stock',
   '/reports': 'Reports',
-  '/roles': 'Roles & Permissions',
-  '/roles/manage-roles': 'Manage Roles',
-  '/roles/manage-permissions': 'Manage Permissions',
-  '/roles/manage-users': 'Manage Users',
-  '/roles/add-user': 'Add User',
 };
 
 const emptyPasswordForm = {
@@ -40,9 +35,7 @@ export default function Layout() {
   const isEdit = location.pathname.includes('/stocks/edit/');
   const title = isEdit
     ? 'Edit Stock'
-    : location.pathname.startsWith('/roles/')
-      ? pageTitles[location.pathname] || 'Roles & Permissions'
-      : pageTitles[location.pathname] || 'Stock Management';
+    : pageTitles[location.pathname] || 'Stock Management';
   const [accountOpen, setAccountOpen] = useState(false);
   const [profileName, setProfileName] = useState(user?.username || '');
   const [profileError, setProfileError] = useState('');

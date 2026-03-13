@@ -6,7 +6,6 @@ import {
   MdBarChart,
   MdBuildCircle,
   MdFactory,
-  MdShield,
 } from 'react-icons/md';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -16,7 +15,7 @@ const navItems = [
   { to: '/stocks', icon: MdInventory, label: 'Stock List', moduleKey: 'stock_list', action: 'view' },
   { to: '/stocks/add', icon: MdPlaylistAdd, label: 'Add Stock', moduleKey: 'stock_entry', action: 'view' },
   { to: '/reports', icon: MdBarChart, label: 'Reports', moduleKey: 'reports', action: 'view' },
-  { to: '/roles', icon: MdShield, label: 'Roles & Permissions', moduleKey: 'roles_permissions', action: 'view' },
+  // Roles & permissions menu intentionally hidden
 ];
 
 export default function Sidebar({ isOpen = false, onClose = () => {} }) {

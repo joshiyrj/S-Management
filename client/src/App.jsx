@@ -5,7 +5,6 @@ import MasterData from './pages/MasterData';
 import StockList from './pages/Stock/StockList';
 import AddEditStock from './pages/Stock/AddEditStock';
 import Reports from './pages/Reports/Reports';
-import RolesPermissions from './pages/RolesPermissions';
 import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -28,8 +27,8 @@ export default function App() {
         <Route path="stocks/add" element={<ProtectedRoute moduleKey="stock_entry"><AddEditStock /></ProtectedRoute>} />
         <Route path="stocks/edit/:id" element={<ProtectedRoute moduleKey="stock_entry"><AddEditStock /></ProtectedRoute>} />
         <Route path="reports" element={<ProtectedRoute moduleKey="reports"><Reports /></ProtectedRoute>} />
-        <Route path="roles" element={<Navigate to="/roles/manage-roles" replace />} />
-        <Route path="roles/:section" element={<ProtectedRoute moduleKey="roles_permissions"><RolesPermissions /></ProtectedRoute>} />
+        {/* Roles & permissions module intentionally hidden from website navigation and routing */}
+        <Route path="roles/*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>
   );
