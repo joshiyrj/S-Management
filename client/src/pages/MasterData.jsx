@@ -45,6 +45,7 @@ function MasterSection({ tabKey }) {
   const [adding, setAdding] = useState(false);
   const [editId, setEditId] = useState(null);
   const [editName, setEditName] = useState('');
+  const [editError, setEditError] = useState('');
   const [saving, setSaving] = useState(false);
   const [togglingId, setTogglingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -124,16 +125,21 @@ function MasterSection({ tabKey }) {
   };
 
   const handleEdit = async (id) => {
-    if (!editName.trim()) { toast.error(`${entityLabel} name is required`); return; }
+    if (!editName.trim()) {
+      setEditError(`${entityLabel} name is required`);
+      return;
+    }
+    setEditError('');
     setSaving(true);
     try {
       await apiMap[tabKey].update(id, { name: editName.trim() });
       toast.success(`${entityLabel} updated`, { id: `${tabKey}-update` });
       setEditId(null);
       setEditName('');
+      setEditError('');
       fetchItems();
     } catch (err) {
-      toast.error(err.message);
+      setEditError(err.message || `Unable to update ${entityLabel.toLowerCase()}`);
     } finally {
       setSaving(false);
     }
@@ -207,13 +213,19 @@ function MasterSection({ tabKey }) {
                   <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Entry {idx + 1}</p>
                     {editId === item._id ? (
-                      <input
-                        className="form-input mt-2"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleEdit(item._id)}
-                        autoFocus
-                      />
+                      <div className="mt-2">
+                        <input
+                          className={`form-input ${editError ? 'form-input-error' : ''}`}
+                          value={editName}
+                          onChange={(e) => {
+                            setEditName(e.target.value);
+                            setEditError('');
+                          }}
+                          onKeyDown={(e) => e.key === 'Enter' && handleEdit(item._id)}
+                          autoFocus
+                        />
+                        {editError && <p className="form-error">{editError}</p>}
+                      </div>
                     ) : (
                       <h3 className="mt-1 break-words text-base font-semibold text-slate-800">{item.name}</h3>
                     )}
@@ -251,7 +263,7 @@ function MasterSection({ tabKey }) {
                       </button>
                       <button
                         className="btn-secondary btn-sm flex-1"
-                        onClick={() => { setEditId(null); setEditName(''); }}
+                        onClick={() => { setEditId(null); setEditName(''); setEditError(''); }}
                       >
                         <MdClose /> Cancel
                       </button>
@@ -324,13 +336,19 @@ function MasterSection({ tabKey }) {
                     <td className="px-4 py-3 text-slate-400">{idx + 1}</td>
                     <td className="px-4 py-3 font-medium text-slate-800 break-words">
                       {editId === item._id ? (
-                        <input
-                          className="form-input py-1"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleEdit(item._id)}
-                          autoFocus
-                        />
+                        <div>
+                          <input
+                            className={`form-input py-1 ${editError ? 'form-input-error' : ''}`}
+                            value={editName}
+                            onChange={(e) => {
+                              setEditName(e.target.value);
+                              setEditError('');
+                            }}
+                            onKeyDown={(e) => e.key === 'Enter' && handleEdit(item._id)}
+                            autoFocus
+                          />
+                          {editError && <p className="form-error">{editError}</p>}
+                        </div>
                       ) : (
                         item.name
                       )}
@@ -366,7 +384,7 @@ function MasterSection({ tabKey }) {
                             </button>
                             <button
                               className="btn-secondary btn-xs"
-                              onClick={() => { setEditId(null); setEditName(''); }}
+                              onClick={() => { setEditId(null); setEditName(''); setEditError(''); }}
                             >
                               <MdClose /> Cancel
                             </button>
@@ -375,7 +393,7 @@ function MasterSection({ tabKey }) {
                           <>
                             <button
                               className="btn-secondary btn-xs"
-                              onClick={() => { setEditId(item._id); setEditName(item.name); }}
+                              onClick={() => { setEditId(item._id); setEditName(item.name); setEditError(''); }}
                             >
                               <MdEdit /> Edit
                             </button>

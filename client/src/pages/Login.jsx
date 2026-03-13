@@ -8,6 +8,7 @@ import { MoonStar, Package, SunMedium } from 'lucide-react';
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState({ username: '', password: '', form: '' });
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const { theme, toggleTheme, isDark } = useTheme();
@@ -18,8 +19,13 @@ export default function Login() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!username || !password) {
-      toast.error('Please fill in all fields', { id: 'login-validation' });
+    const nextErrors = {
+      username: username.trim() ? '' : 'Username is required',
+      password: password.trim() ? '' : 'Password is required',
+      form: '',
+    };
+    setErrors(nextErrors);
+    if (nextErrors.username || nextErrors.password) {
       return;
     }
 
@@ -31,7 +37,7 @@ export default function Login() {
       toast.success('Login successful', { id: 'login-success' });
       navigate(from, { replace: true });
     } else {
-      toast.error(result.message, { id: 'login-error' });
+      setErrors((current) => ({ ...current, form: result.message || 'Invalid username or password' }));
     }
   };
 
@@ -69,15 +75,19 @@ export default function Login() {
                   type="text"
                   required
                   value={username}
-                  onChange={(event) => setUsername(event.target.value)}
+                  onChange={(event) => {
+                    setUsername(event.target.value);
+                    setErrors((current) => ({ ...current, username: '', form: '' }));
+                  }}
                   className={`block w-full appearance-none rounded-md px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm ${
                     isDark
-                      ? 'border border-slate-600 bg-slate-700 text-white placeholder-slate-400'
-                      : 'border border-slate-300 bg-white text-slate-900 placeholder-slate-400'
+                      ? `border ${errors.username ? 'border-red-400' : 'border-slate-600'} bg-slate-700 text-white placeholder-slate-400`
+                      : `border ${errors.username ? 'border-red-400' : 'border-slate-300'} bg-white text-slate-900 placeholder-slate-400`
                   }`}
                   placeholder="Enter username"
                 />
               </div>
+              <p className={`form-feedback ${errors.username ? 'form-error' : 'text-transparent'}`}>{errors.username || 'x'}</p>
             </div>
 
             <div>
@@ -87,15 +97,20 @@ export default function Login() {
                   type="password"
                   required
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setErrors((current) => ({ ...current, password: '', form: '' }));
+                  }}
                   className={`block w-full appearance-none rounded-md px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm ${
                     isDark
-                      ? 'border border-slate-600 bg-slate-700 text-white placeholder-slate-400'
-                      : 'border border-slate-300 bg-white text-slate-900 placeholder-slate-400'
+                      ? `border ${errors.password ? 'border-red-400' : 'border-slate-600'} bg-slate-700 text-white placeholder-slate-400`
+                      : `border ${errors.password ? 'border-red-400' : 'border-slate-300'} bg-white text-slate-900 placeholder-slate-400`
                   }`}
                   placeholder="Enter password"
                 />
               </div>
+              <p className={`form-feedback ${errors.password ? 'form-error' : 'text-transparent'}`}>{errors.password || 'x'}</p>
+              {errors.form ? <p className="form-error">{errors.form}</p> : null}
             </div>
 
             <div>
