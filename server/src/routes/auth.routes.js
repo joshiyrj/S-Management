@@ -9,30 +9,13 @@ const LoginSchema = z.object({
   password: z.string().min(1)
 });
 const ADMIN_COOKIE = process.env.COOKIE_NAME || "s_management_token";
-const DEFAULT_ADMIN_USERNAME = process.env.ADMIN_USERNAME || "SuperAdmin";
-const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Admin@1234";
 
 router.post("/login", async (req, res, next) => {
   try {
     const { username, password } = LoginSchema.parse(req.body);
     const normalizedUsername = username.trim();
-
-    if (normalizedUsername !== DEFAULT_ADMIN_USERNAME) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    // Ensure admin user exists in DB (profile editable).
-    let admin = await AdminUser.findOne({ username: DEFAULT_ADMIN_USERNAME });
-    if (!admin) {
-      const passwordHash = await bcrypt.hash(DEFAULT_ADMIN_PASSWORD, 10);
-      admin = await AdminUser.create({
-        username: DEFAULT_ADMIN_USERNAME,
-        name: "Super Admin",
-        email: "superadmin@smanagement.com",
-        mobile: "9999999999",
-        passwordHash
-      });
-    }
+    const admin = await AdminUser.findOne({ username: normalizedUsername });
+    if (!admin) return res.status(401).json({ message: "Invalid credentials" });
 
     const passwordOk = await bcrypt.compare(password, admin.passwordHash);
     if (!passwordOk) {

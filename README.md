@@ -61,12 +61,8 @@ Required:
 Important:
 - `COOKIE_NAME` (default: `s_management_token`)
 - `CLIENT_ORIGIN` (comma-separated allowed origins)
-- `ADMIN_USERNAME`, `ADMIN_PASSWORD` (bootstrap admin credentials)
-- `DEFAULT_USER_EMAIL`, `DEFAULT_USER_PASSWORD` (bootstrap user credentials)
-
-Default credential fallbacks (if env vars are not set):
-- Admin: `SuperAdmin` / `Admin@1234`
-- User: `joshiyrj@gmail.com` / `Admin@1234`
+- `ADMIN_USERNAME`, `ADMIN_PASSWORD` for optional manual account bootstrap
+- `DEFAULT_USER_EMAIL`, `DEFAULT_USER_PASSWORD` for optional manual user bootstrap
 
 ### Client (`client/.env`)
 
@@ -81,7 +77,7 @@ Root:
 - `npm run dev` start backend + frontend together
 - `npm run build` build frontend
 - `npm run start` start backend
-- `npm run seed` seed collections/items/admin
+- `npm run bootstrap:accounts` create admin and user accounts from env vars if needed
 
 Subprojects:
 - `npm --prefix client run lint`
@@ -95,6 +91,8 @@ Subprojects:
 3. Set environment variables in Vercel Project Settings (all required server vars, plus optional client vars).
 4. Deploy.
 
+This project does not auto-create demo accounts or sample inventory data on login. If you need first-run accounts, set the bootstrap env vars and run `npm run bootstrap:accounts` once against the target database.
+
 This repo includes:
 - `api/index.js` for backend API function
 - `vercel.json` rewrites:
@@ -106,7 +104,7 @@ This repo includes:
 
 - `server/.env` is ignored by git.
 - Do not commit real secrets.
-- Set strong production values for `JWT_SECRET` and `ADMIN_PASSWORD`.
+- Set strong production values for `JWT_SECRET` and any bootstrap credentials you use.
 
 ## Quality Status
 

@@ -5,14 +5,14 @@
     "description": "S Management MERN Application",
     "scripts": {
         "dev": "concurrently -n SERVER,CLIENT -c green,cyan \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
-        "server": "npm --prefix server run dev",
-        "client": "npm --prefix client run dev",
-        "start": "npm --prefix server run start",
-        "build": "npm --prefix client run build",
-        "seed": "npm --prefix server run seed",
-        "install:all": "npm install --prefix server && npm install --prefix client",
-        "postinstall": "npm run install:all"
-    },
+    "server": "npm --prefix server run dev",
+    "client": "npm --prefix client run dev",
+    "start": "npm --prefix server run start",
+    "build": "npm --prefix client run build",
+    "bootstrap:accounts": "npm --prefix server run bootstrap:accounts",
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "postinstall": "npm run install:all"
+  },
     "devDependencies": {
         "concurrently": "^9.2.1"
     }

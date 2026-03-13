@@ -5,10 +5,6 @@ const User = require("../models/User");
 const { signToken, verifyToken, cookieOptions, clearCookieOptions } = require("../lib/auth");
 
 const USER_COOKIE = "s_management_user_token";
-const DEFAULT_USER_EMAIL = String(process.env.DEFAULT_USER_EMAIL || "joshiyrj@gmail.com").toLowerCase().trim();
-const DEFAULT_USER_PASSWORD = process.env.DEFAULT_USER_PASSWORD || "Admin@1234";
-const DEFAULT_USER_NAME = process.env.DEFAULT_USER_NAME || "Joshiyrj";
-const DEFAULT_USER_MOBILE = process.env.DEFAULT_USER_MOBILE || "9999999999";
 
 const LoginSchema = z.object({
     email: z.string().email(),
@@ -27,21 +23,6 @@ const PasswordSchema = z.object({
     currentPassword: z.string().min(1),
     newPassword: z.string().min(4).max(128)
 });
-
-async function ensureDefaultUser() {
-    let user = await User.findOne({ email: DEFAULT_USER_EMAIL });
-    if (user) return user;
-
-    const passwordHash = await bcrypt.hash(DEFAULT_USER_PASSWORD, 10);
-    user = await User.create({
-        name: DEFAULT_USER_NAME,
-        email: DEFAULT_USER_EMAIL,
-        mobile: DEFAULT_USER_MOBILE,
-        passwordHash,
-        status: "active"
-    });
-    return user;
-}
 
 // Middleware: requireUser
 async function requireUser(req, res, next) {
@@ -71,21 +52,8 @@ router.post("/login", async (req, res, next) => {
         const { email, password } = LoginSchema.parse(req.body);
         const normalizedEmail = email.toLowerCase().trim();
 
-        let user = await User.findOne({ email: normalizedEmail });
-        if (!user && normalizedEmail === DEFAULT_USER_EMAIL) {
-            user = await ensureDefaultUser();
-        }
+        const user = await User.findOne({ email: normalizedEmail });
         if (!user) return res.status(401).json({ message: "Invalid email or password" });
-
-        // Keep configured default credentials usable for the default account.
-        if (normalizedEmail === DEFAULT_USER_EMAIL && password === DEFAULT_USER_PASSWORD) {
-            const hasConfiguredPassword = await bcrypt.compare(DEFAULT_USER_PASSWORD, user.passwordHash);
-            if (!hasConfiguredPassword || user.status !== "active") {
-                user.passwordHash = await bcrypt.hash(DEFAULT_USER_PASSWORD, 10);
-                user.status = "active";
-                await user.save();
-            }
-        }
 
         if (user.status === "suspended") return res.status(403).json({ message: "Account suspended. Contact admin." });
 

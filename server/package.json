@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "kill-port 5000 && nodemon src/index.js",
     "start": "node src/index.js",
-    "seed": "node src/seed/seed.js"
+    "bootstrap:accounts": "node src/scripts/bootstrapAccounts.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
